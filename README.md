@@ -64,7 +64,7 @@ Welcome! This Node.js application integrates Asterisk 22 with the OpenAI Realtim
      ```ini
      [default]
      exten => 9999,1,Answer()
-     same => n,Stasis(asterisk_to_openai_rt)
+     same => n,Stasis(asterisk_to_gemini_rt)
      same => n,Hangup()
      ```
    - Configure SIP Extensions
