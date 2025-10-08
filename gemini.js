@@ -1,8 +1,9 @@
-import WebSocket from 'ws';
-import { v4 as uuid } from 'uuid';
-import { config, logger, logClient, logOpenAI } from './config';
-import { sipMap, cleanupPromises } from './state';
-import { streamAudio, rtpEvents } from './rtp';
+const WebSocket = require('ws');
+const { v4: uuid } = require('uuid');
+const { config, logger, logClient, logOpenAI } = require('./config');
+const { sipMap, cleanupPromises } = require('./state');
+const { streamAudio, rtpEvents } = require('./rtp');
+
 
 logger.info('Loading gemini.js module');
 
