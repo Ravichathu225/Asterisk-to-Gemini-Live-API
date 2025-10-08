@@ -1,8 +1,8 @@
-const WebSocket = require('ws');
-const { v4: uuid } = require('uuid');
-const { config, logger, logClient, logOpenAI } = require('./config');
-const { sipMap, cleanupPromises } = require('./state');
-const { streamAudio, rtpEvents } = require('./rtp');
+import WebSocket from 'ws';
+import { v4 as uuid } from 'uuid';
+import { config, logger, logClient, logOpenAI } from './config';
+import { sipMap, cleanupPromises } from './state';
+import { streamAudio, rtpEvents } from './rtp';
 
 logger.info('Loading gemini.js module');
 
@@ -101,6 +101,7 @@ async function startGeminiWebSocket(channelId) {
       // Handle serverContent messages
       if (response.serverContent) {
         const content = response.serverContent;
+        logger.debug(`ServerContent received for ${channelId}: ${JSON.stringify(content, null, 2)}`);
 
         // Handle interruption
         if (content.interrupted) {
@@ -113,10 +114,18 @@ async function startGeminiWebSocket(channelId) {
         // Handle model turn with audio data
         if (content.modelTurn && content.modelTurn.parts) {
           for (const part of content.modelTurn.parts) {
+            logger.debug(`Processing part for ${channelId}: ${JSON.stringify(Object.keys(part))}`);
+            
             // Handle inline audio data
-            if (part.inlineData && part.inlineData.mimeType === 'audio/pcm') {
-              const deltaBuffer = Buffer.from(part.inlineData.data, 'base64');
-              if (deltaBuffer.length > 0 && !deltaBuffer.every(byte => byte === 0x7F)) {
+            if (part.inlineData) {
+              const inlineData = part.inlineData;
+              logger.debug(`InlineData found: mimeType=${inlineData.mimeType}, dataLength=${inlineData.data ? inlineData.data.length : 0}`);
+              
+              if (inlineData.data && (inlineData.mimeType === 'audio/pcm' || inlineData.mimeType === 'audio/wav')) {
+                const deltaBuffer = Buffer.from(inlineData.data, 'base64');
+                logger.debug(`Decoded audio buffer for ${channelId}: ${deltaBuffer.length} bytes`);
+                
+                if (deltaBuffer.length > 0 && !deltaBuffer.every(byte => byte === 0x7F)) {
                 totalDeltaBytes += deltaBuffer.length;
                 channelData.totalDeltaBytes = totalDeltaBytes;
                 sipMap.set(channelId, channelData);
@@ -149,17 +158,23 @@ async function startGeminiWebSocket(channelId) {
             if (part.text) {
               logger.debug(`Assistant text for ${channelId}: ${part.text}`);
             }
-          }
+          } // <-- Close the for loop here
         }
 
         // Handle input transcription
         if (content.inputTranscription) {
-          logOpenAI(`User command transcription for ${channelId}: ${content.inputTranscription}`, 'info');
+          const transcriptText = typeof content.inputTranscription === 'string' 
+            ? content.inputTranscription 
+            : content.inputTranscription.text || JSON.stringify(content.inputTranscription);
+          logOpenAI(`User command transcription for ${channelId}: ${transcriptText}`, 'info');
         }
 
         // Handle output transcription
         if (content.outputTranscription) {
-          logOpenAI(`Assistant transcription for ${channelId}: ${content.outputTranscription}`, 'info');
+          const transcriptText = typeof content.outputTranscription === 'string' 
+            ? content.outputTranscription 
+            : content.outputTranscription.text || JSON.stringify(content.outputTranscription);
+          logOpenAI(`Assistant transcription for ${channelId}: ${transcriptText}`, 'info');
         }
 
         // Handle turn completion
@@ -190,11 +205,13 @@ async function startGeminiWebSocket(channelId) {
       if (response.usageMetadata) {
         logger.debug(`Usage metadata for ${channelId}: ${JSON.stringify(response.usageMetadata)}`);
       }
+    }
 
     } catch (e) {
       logger.error(`Error processing message for ${channelId}: ${e.message}`);
     }
   };
+
 
   const connectWebSocket = () => {
     return new Promise((resolve, reject) => {
@@ -211,7 +228,7 @@ async function startGeminiWebSocket(channelId) {
           setup: {
             model: config.GEMINI_MODEL || 'models/gemini-2.0-flash-exp',
             generationConfig: {
-              responseModalities: ['audio'],
+              responseModalities: ['AUDIO'],
               speechConfig: {
                 voiceConfig: {
                   prebuiltVoiceConfig: {
@@ -328,6 +345,6 @@ async function startGeminiWebSocket(channelId) {
     logger.error(`Failed to start WebSocket for ${channelId}: ${e.message}`);
     throw e;
   }
-}
 
+}
 module.exports = { startGeminiWebSocket };

@@ -64,7 +64,7 @@ Welcome! This Node.js application integrates Asterisk 22 with the OpenAI Realtim
      ```ini
      [default]
      exten => 9999,1,Answer()
-     same => n,Stasis(asterisk_to_gemini_rt)
+     same => n,Stasis(asterisk_to_openai_rt)
      same => n,Hangup()
      ```
    - Configure SIP Extensions
@@ -111,8 +111,8 @@ Welcome! This Node.js application integrates Asterisk 22 with the OpenAI Realtim
      ```
 3. Clone the repository and install dependencies:
    ```bash
-   git clone https://github.com/Ravichathu225/Asterisk-to-Gemini-Live-API.git
-   cd Asterisk-to-Gemini-Live-API
+   git clone https://github.com/infinitocloud/asterisk_to_openai_rt_community.git
+   cd asterisk_to_openai_rt_community
    npm install
    ```
 4. Edit `config.conf` in the project root and add your `OPENAI_API_KEY` in the designated field:
