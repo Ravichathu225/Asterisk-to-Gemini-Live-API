@@ -3,7 +3,7 @@ const { v4: uuid } = require('uuid');
 const { config, logger, logClient, logOpenAI } = require('./config');
 const { sipMap, cleanupPromises } = require('./state');
 const { streamAudio, rtpEvents } = require('./rtp');
-
+const { pcm24kToUlaw } = require('./audio');
 
 logger.info('Loading gemini.js module');
 
