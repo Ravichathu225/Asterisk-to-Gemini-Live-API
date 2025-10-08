@@ -112,7 +112,7 @@ Welcome! This Node.js application integrates Asterisk 22 with the OpenAI Realtim
 3. Clone the repository and install dependencies:
    ```bash
    git clone https://github.com/Ravichathu225/Asterisk-to-Gemini-Live-API.git
-   cd asterisk_to_openai_rt_community
+   cd asterisk_to_gemini
    npm install
    ```
 4. Edit `config.conf` in the project root and add your `OPENAI_API_KEY` in the designated field:
