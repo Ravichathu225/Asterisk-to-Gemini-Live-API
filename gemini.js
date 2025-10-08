@@ -102,8 +102,7 @@ async function startGeminiWebSocket(channelId) {
       // Handle serverContent messages
       if (response.serverContent) {
         const content = response.serverContent;
-        logger.debug(`ServerContent received for ${channelId}: ${JSON.stringify(content, null, 2)}`);
-
+        
         // Handle interruption
         if (content.interrupted) {
           logOpenAI(`Response interrupted for ${channelId}`, 'info');
@@ -115,35 +114,33 @@ async function startGeminiWebSocket(channelId) {
         // Handle model turn with audio data
         if (content.modelTurn && content.modelTurn.parts) {
           for (const part of content.modelTurn.parts) {
-            logger.debug(`Processing part for ${channelId}: ${JSON.stringify(Object.keys(part))}`);
-            
             // Handle inline audio data
-            if (part.inlineData) {
-              const inlineData = part.inlineData;
-              logger.debug(`InlineData found: mimeType=${inlineData.mimeType}, dataLength=${inlineData.data ? inlineData.data.length : 0}`);
+            if (part.inlineData && part.inlineData.mimeType && part.inlineData.mimeType.startsWith('audio/pcm')) {
+              const pcm24kBuffer = Buffer.from(part.inlineData.data, 'base64');
+              logger.debug(`Received PCM audio for ${channelId}: ${pcm24kBuffer.length} bytes, mimeType: ${part.inlineData.mimeType}`);
               
-              if (inlineData.data && (inlineData.mimeType === 'audio/pcm' || inlineData.mimeType === 'audio/wav')) {
-                const deltaBuffer = Buffer.from(inlineData.data, 'base64');
-                logger.debug(`Decoded audio buffer for ${channelId}: ${deltaBuffer.length} bytes`);
+              if (pcm24kBuffer.length > 0) {
+                // Convert 24kHz PCM to 8kHz μ-law
+                const ulawBuffer = pcm24kToUlaw(pcm24kBuffer);
+                logger.debug(`Converted to μ-law for ${channelId}: ${ulawBuffer.length} bytes`);
                 
-                if (deltaBuffer.length > 0 && !deltaBuffer.every(byte => byte === 0x7F)) {
-                totalDeltaBytes += deltaBuffer.length;
+                totalDeltaBytes += ulawBuffer.length;
                 channelData.totalDeltaBytes = totalDeltaBytes;
                 sipMap.set(channelId, channelData);
                 segmentCount++;
                 
-                if (totalDeltaBytes - loggedDeltaBytes >= 40000 || segmentCount >= 100) {
-                  logOpenAI(`Received audio delta for ${channelId}: ${deltaBuffer.length} bytes, total: ${totalDeltaBytes} bytes, estimated duration: ${(totalDeltaBytes / 8000).toFixed(2)}s`, 'info');
+                if (totalDeltaBytes - loggedDeltaBytes >= 4000 || segmentCount >= 100) {
+                  logOpenAI(`Received audio delta for ${channelId}: ${ulawBuffer.length} bytes, total: ${totalDeltaBytes} bytes, estimated duration: ${(totalDeltaBytes / 8000).toFixed(2)}s`, 'info');
                   loggedDeltaBytes = totalDeltaBytes;
                   segmentCount = 0;
                 }
 
-                let packetBuffer = deltaBuffer;
-                if (totalDeltaBytes === deltaBuffer.length) {
+                let packetBuffer = ulawBuffer;
+                if (totalDeltaBytes === ulawBuffer.length) {
                   const silenceDurationMs = config.SILENCE_PADDING_MS || 100;
                   const silencePackets = Math.ceil(silenceDurationMs / 20);
                   const silenceBuffer = Buffer.alloc(silencePackets * 160, 0x7F);
-                  packetBuffer = Buffer.concat([silenceBuffer, deltaBuffer]);
+                  packetBuffer = Buffer.concat([silenceBuffer, ulawBuffer]);
                   logger.info(`Prepended ${silencePackets} silence packets (${silenceDurationMs} ms) for ${channelId}`);
                 }
 
@@ -151,7 +148,7 @@ async function startGeminiWebSocket(channelId) {
                   streamHandler.sendRtpPacket(packetBuffer);
                 }
               } else {
-                logger.warn(`Received empty or silent delta for ${channelId}`);
+                logger.warn(`Received empty audio buffer for ${channelId}`);
               }
             }
 
@@ -159,7 +156,7 @@ async function startGeminiWebSocket(channelId) {
             if (part.text) {
               logger.debug(`Assistant text for ${channelId}: ${part.text}`);
             }
-          } // <-- Close the for loop here
+          }
         }
 
         // Handle input transcription
@@ -206,13 +203,11 @@ async function startGeminiWebSocket(channelId) {
       if (response.usageMetadata) {
         logger.debug(`Usage metadata for ${channelId}: ${JSON.stringify(response.usageMetadata)}`);
       }
-    }
 
     } catch (e) {
       logger.error(`Error processing message for ${channelId}: ${e.message}`);
     }
   };
-
 
   const connectWebSocket = () => {
     return new Promise((resolve, reject) => {
@@ -346,6 +341,6 @@ async function startGeminiWebSocket(channelId) {
     logger.error(`Failed to start WebSocket for ${channelId}: ${e.message}`);
     throw e;
   }
-
 }
+
 module.exports = { startGeminiWebSocket };

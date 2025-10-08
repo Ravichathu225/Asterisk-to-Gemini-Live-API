@@ -122,12 +122,17 @@ module.exports = {
     return pcm16k;
   },
   pcm24kToUlaw: (pcm24kBuffer) => {
-    const pcm8k = resample24kTo8k(pcm24kBuffer);
-    const linear8kView = new Int16Array(pcm8k.buffer);
-    const ulaw = Buffer.alloc(linear8kView.length / 2);  // One byte per sample
-    for (let i = 0; i < linear8kView.length / 2; i++) {  // Assuming even length
-      const linear = linear8kView[i * 2];  // Wait, no: pcm8k is Int16Array of length samples
-      ulaw[i] = linearToUlaw(linear);
+    // Convert buffer to Int16Array (PCM 16-bit samples)
+    const pcm24kView = new Int16Array(pcm24kBuffer.buffer, pcm24kBuffer.byteOffset, pcm24kBuffer.length / 2);
+    
+    // Resample from 24kHz to 8kHz
+    const pcm8kBuffer = resample24kTo8k(pcm24kView);
+    const pcm8kView = new Int16Array(pcm8kBuffer.buffer, pcm8kBuffer.byteOffset, pcm8kBuffer.length / 2);
+    
+    // Convert PCM to μ-law
+    const ulaw = Buffer.alloc(pcm8kView.length);
+    for (let i = 0; i < pcm8kView.length; i++) {
+      ulaw[i] = linearToUlaw(pcm8kView[i]);
     }
     return ulaw;
   }
