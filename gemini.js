@@ -230,11 +230,7 @@ async function startGeminiWebSocket(channelId) {
                   prebuiltVoiceConfig: {
                     voiceName: config.GEMINI_VOICE || 'Puck'
                   }
-                },
-                contextWindowCompression: {
-                    triggerTokens: '25600',
-                    slidingWindow: { targetTokens: '12800' },
-                },
+                }
               }
             }
           }
