@@ -1,6 +1,6 @@
 const WebSocket = require('ws');
 const { v4: uuid } = require('uuid');
-const { config, logger, logClient, logOpenAI } = require('./config');
+const { config, logger, logClient, logGeminiAI } = require('./config');
 const { sipMap, cleanupPromises } = require('./state');
 const { streamAudio, rtpEvents } = require('./rtp');
 const { pcm24kToUlaw } = require('./audio');
@@ -10,7 +10,7 @@ logger.info('Loading gemini.js module');
 async function waitForBufferEmpty(channelId, maxWaitTime = 6000, checkInterval = 10) {
   const channelData = sipMap.get(channelId);
   if (!channelData?.streamHandler) {
-    logOpenAI(`No streamHandler for ${channelId}, proceeding`, 'info');
+    logGeminiAI(`No streamHandler for ${channelId}, proceeding`, 'info');
     return true;
   }
   const streamHandler = channelData.streamHandler;
@@ -21,13 +21,13 @@ async function waitForBufferEmpty(channelId, maxWaitTime = 6000, checkInterval =
     audioDurationMs = Math.ceil((channelData.totalDeltaBytes / 8000) * 1000) + 500; // Audio duration + 500ms margin
   }
   const dynamicTimeout = Math.min(audioDurationMs, maxWaitTime);
-  logOpenAI(`Using dynamic timeout of ${dynamicTimeout}ms for ${channelId} (estimated audio duration: ${(channelData.totalDeltaBytes || 0) / 8000}s)`, 'info');
+  logGeminiAI(`Using dynamic timeout of ${dynamicTimeout}ms for ${channelId} (estimated audio duration: ${(channelData.totalDeltaBytes || 0) / 8000}s)`, 'info');
 
   let audioFinishedReceived = false;
   const audioFinishedPromise = new Promise((resolve) => {
     rtpEvents.once('audioFinished', (id) => {
       if (id === channelId) {
-        logOpenAI(`Audio finished sending for ${channelId} after ${Date.now() - startWaitTime}ms`, 'info');
+        logGeminiAI(`Audio finished sending for ${channelId} after ${Date.now() - startWaitTime}ms`, 'info');
         audioFinishedReceived = true;
         resolve();
       }
@@ -43,7 +43,7 @@ async function waitForBufferEmpty(channelId, maxWaitTime = 6000, checkInterval =
     while (!isBufferEmpty() && (Date.now() - startWaitTime) < maxWaitTime) {
       const now = Date.now();
       if (now - lastLogTime >= 50) {
-        logOpenAI(`Waiting for RTP buffer to empty for ${channelId} | Buffer: ${streamHandler.audioBuffer?.length || 0} bytes, Queue: ${streamHandler.packetQueue?.length || 0} packets`, 'info');
+        logGeminiAI(`Waiting for RTP buffer to empty for ${channelId} | Buffer: ${streamHandler.audioBuffer?.length || 0} bytes, Queue: ${streamHandler.packetQueue?.length || 0} packets`, 'info');
         lastLogTime = now;
       }
       await new Promise(resolve => setTimeout(resolve, checkInterval));
@@ -52,7 +52,7 @@ async function waitForBufferEmpty(channelId, maxWaitTime = 6000, checkInterval =
       logger.warn(`Timeout waiting for RTP buffer to empty for ${channelId} after ${maxWaitTime}ms`);
       return false;
     }
-    logOpenAI(`RTP buffer emptied for ${channelId} after ${Date.now() - startWaitTime}ms`, 'info');
+    logGeminiAI(`RTP buffer emptied for ${channelId} after ${Date.now() - startWaitTime}ms`, 'info');
   }
 
   const timeoutPromise = new Promise((resolve) => {
@@ -65,7 +65,7 @@ async function waitForBufferEmpty(channelId, maxWaitTime = 6000, checkInterval =
   });
   await Promise.race([audioFinishedPromise, timeoutPromise]);
 
-  logOpenAI(`waitForBufferEmpty completed for ${channelId} in ${Date.now() - startWaitTime}ms`, 'info');
+  logGeminiAI(`waitForBufferEmpty completed for ${channelId} in ${Date.now() - startWaitTime}ms`, 'info');
   return true;
 }
 
@@ -105,7 +105,7 @@ async function startGeminiWebSocket(channelId) {
         
         // Handle interruption
         if (content.interrupted) {
-          logOpenAI(`Response interrupted for ${channelId}`, 'info');
+          logGeminiAI(`Response interrupted for ${channelId}`, 'info');
           if (streamHandler) {
             streamHandler.stopPlayback();
           }
@@ -130,7 +130,7 @@ async function startGeminiWebSocket(channelId) {
                 segmentCount++;
                 
                 if (totalDeltaBytes - loggedDeltaBytes >= 4000 || segmentCount >= 100) {
-                  logOpenAI(`Received audio delta for ${channelId}: ${ulawBuffer.length} bytes, total: ${totalDeltaBytes} bytes, estimated duration: ${(totalDeltaBytes / 8000).toFixed(2)}s`, 'info');
+                  logGeminiAI(`Received audio delta for ${channelId}: ${ulawBuffer.length} bytes, total: ${totalDeltaBytes} bytes, estimated duration: ${(totalDeltaBytes / 8000).toFixed(2)}s`, 'info');
                   loggedDeltaBytes = totalDeltaBytes;
                   segmentCount = 0;
                 }
@@ -164,7 +164,7 @@ async function startGeminiWebSocket(channelId) {
           const transcriptText = typeof content.inputTranscription === 'string' 
             ? content.inputTranscription 
             : content.inputTranscription.text || JSON.stringify(content.inputTranscription);
-          logOpenAI(`User command transcription for ${channelId}: ${transcriptText}`, 'info');
+          logGeminiAI(`User command transcription for ${channelId}: ${transcriptText}`, 'info');
         }
 
         // Handle output transcription
@@ -172,12 +172,12 @@ async function startGeminiWebSocket(channelId) {
           const transcriptText = typeof content.outputTranscription === 'string' 
             ? content.outputTranscription 
             : content.outputTranscription.text || JSON.stringify(content.outputTranscription);
-          logOpenAI(`Assistant transcription for ${channelId}: ${transcriptText}`, 'info');
+          logGeminiAI(`Assistant transcription for ${channelId}: ${transcriptText}`, 'info');
         }
 
         // Handle turn completion
         if (content.turnComplete) {
-          logOpenAI(`Response turn complete for ${channelId}, total delta bytes: ${totalDeltaBytes}, estimated duration: ${(totalDeltaBytes / 8000).toFixed(2)}s`, 'info');
+          logGeminiAI(`Response turn complete for ${channelId}, total delta bytes: ${totalDeltaBytes}, estimated duration: ${(totalDeltaBytes / 8000).toFixed(2)}s`, 'info');
           isResponseActive = false;
           loggedDeltaBytes = 0;
           segmentCount = 0;
@@ -185,7 +185,7 @@ async function startGeminiWebSocket(channelId) {
 
         // Handle generation completion
         if (content.generationComplete) {
-          logOpenAI(`Generation complete for ${channelId}`, 'info');
+          logGeminiAI(`Generation complete for ${channelId}`, 'info');
         }
       }
 

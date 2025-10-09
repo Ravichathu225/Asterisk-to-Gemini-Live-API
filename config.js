@@ -50,8 +50,8 @@ const logger = winston.createLogger({
         counter = `C-${sentEventCounter.toString().padStart(4, '0')}`;
         sentEventCounter++;
         coloredMessage = chalk.cyanBright(message);
-      } else if (origin === '[OpenAI]') {
-        counter = `O-${receivedEventCounter.toString().padStart(4, '0')}`;
+      } else if (origin === '[GeminiAI]') {
+        counter = `G-${receivedEventCounter.toString().padStart(4, '0')}`;
         receivedEventCounter++;
         coloredMessage = chalk.yellowBright(message);
       } else {
@@ -80,11 +80,11 @@ if (config.CALL_DURATION_LIMIT_SECONDS < 0) {
 logger.info(`CALL_DURATION_LIMIT_SECONDS set to ${config.CALL_DURATION_LIMIT_SECONDS} seconds`);
 
 const logClient = (msg, level = 'info') => logger[level](`[Client] ${msg}`);
-const logOpenAI = (msg, level = 'info') => logger[level](`[OpenAI] ${msg}`);
+const logGeminiAI = (msg, level = 'info') => logger[level](`[GeminiAI] ${msg}`);
 
 module.exports = {
   config,
   logger,
   logClient,
-  logOpenAI
+  logGeminiAI
 };

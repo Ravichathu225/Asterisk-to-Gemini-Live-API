@@ -2,6 +2,7 @@ const dgram = require('dgram');
 const { EventEmitter } = require('events');
 const { config, logger } = require('./config');
 const { sipMap, rtpSenders, rtpReceivers } = require('./state');
+const { ulawToPcm16k } = require('./audio');
 
 logger.info('Loading rtp.js module');
 
@@ -40,12 +41,14 @@ function startRTPReceiver(channelId, port) {
     }
     if (channelData && channelData.ws && channelData.ws.readyState === 1) {
       const muLawData = msg.slice(12);
+      // Convert μ-law (8kHz) to PCM 16kHz for Gemini
+      const pcm16kData = ulawToPcm16k(muLawData);
       // Send audio as realtimeInput for Gemini Live API
       channelData.ws.send(JSON.stringify({ 
         realtimeInput: {
           audio: {
-            data: muLawData.toString('base64'),
-            mimeType: 'audio/pcm'
+            data: pcm16kData.toString('base64'),
+            mimeType: 'audio/pcm;rate=16000'
           }
         }
       }));
