@@ -224,13 +224,17 @@ async function startGeminiWebSocket(channelId) {
           setup: {
             model: config.GEMINI_MODEL || 'models/gemini-2.0-flash-exp',
             generationConfig: {
-              responseModalities: ['AUDIO'],
+              responseModalities: [Modality.AUDIO],
               speechConfig: {
                 voiceConfig: {
                   prebuiltVoiceConfig: {
                     voiceName: config.GEMINI_VOICE || 'Puck'
                   }
-                }
+                },
+                contextWindowCompression: {
+                    triggerTokens: '25600',
+                    slidingWindow: { targetTokens: '12800' },
+                },
               }
             }
           }
