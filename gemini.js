@@ -224,7 +224,7 @@ async function startGeminiWebSocket(channelId) {
           setup: {
             model: config.GEMINI_MODEL || 'models/gemini-2.0-flash-exp',
             generationConfig: {
-              responseModalities: [Modality.AUDIO],
+              responseModalities: ['AUDIO'],
               speechConfig: {
                 voiceConfig: {
                   prebuiltVoiceConfig: {
