@@ -41,8 +41,10 @@ function startRTPReceiver(channelId, port) {
     }
     if (channelData && channelData.ws && channelData.ws.readyState === 1) {
       const muLawData = msg.slice(12);
+      logger.debug(`Received user audio for ${channelId}: ${muLawData.length} bytes μ-law`);
       // Convert μ-law (8kHz) to PCM 16kHz for Gemini
       const pcm16kData = ulawToPcm16k(muLawData);
+      logger.debug(`Converted user audio to PCM16k for ${channelId}: ${pcm16kData.length} bytes`);
       // Send audio as realtimeInput for Gemini Live API
       channelData.ws.send(JSON.stringify({ 
         realtimeInput: {
@@ -52,6 +54,7 @@ function startRTPReceiver(channelId, port) {
           }
         }
       }));
+      logger.debug(`Sent user audio to Gemini for ${channelId}`);
     }
   });
   rtpReceiver.on('error', (err) => logger.error(`RTP Receiver error for ${channelId}: ${err.message}`));
