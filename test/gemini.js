@@ -1,8 +1,8 @@
 const WebSocket = require('ws');
 const { v4: uuid } = require('uuid');
-const { config, logger, logClient, logGeminiAI } = require('./config');
-const { sipMap, cleanupPromises } = require('./state');
-const { streamAudio, rtpEvents } = require('./rtp');
+const { config, logger, logClient, logGeminiAI } = require('../config');
+const { sipMap, cleanupPromises } = require('../state');
+const { streamAudio, rtpEvents } = require('../rtp');
 const { pcm24kToUlaw } = require('./audio');
 
 logger.info('Loading gemini.js module');
