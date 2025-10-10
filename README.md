@@ -22,8 +22,8 @@ This project enables real-time voice conversations between Asterisk PBX and exte
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
-   cd asterisk_to_external_ai
+   git clone https://github.com/Ravichathu225/Asterisk-to-Gemini-Live-API.git
+   cd Asterisk-to-Gemini-Live-API
    ```
 
 2. **Install dependencies**
