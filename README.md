@@ -1,324 +1,373 @@
-# Asterisk to OpenAI Realtime Community Edition
+# Asterisk to External AI via WebSocket
 
-Welcome! This Node.js application integrates Asterisk 22 with the OpenAI Realtime API to provide a voice-based virtual assistant for SIP calls. It processes audio in real-time and displays user and assistant transcriptions in the console.
+This project enables real-time voice conversations between Asterisk PBX and external AI models through WebSocket connections. It replaces the original OpenAI integration with a flexible WebSocket-based architecture that can connect to any AI model server.
 
----
+## 🎯 Features
 
-## Features
-- Real-time audio processing with Asterisk and OpenAI.
-- Console transcriptions for user and assistant speech.
-- Clean resource management (channels, bridges, WebSocket, RTP).
-- Configurable via `config.conf` (e.g., API key, prompt).
+- **Real-time Voice Streaming**: Bidirectional audio streaming using G.711 μ-law codec
+- **Flexible AI Integration**: Connect to any AI model via WebSocket
+- **Voice Activity Detection**: Intelligent VAD for natural conversations
+- **Multiple Concurrent Calls**: Support for multiple simultaneous conversations
+- **RTP Audio Handling**: Direct RTP streaming for low-latency audio
+- **Call Management**: Configurable call duration limits and cleanup
 
----
+## 📋 Prerequisites
 
-## Requirements
-| Category      | Details                                      |
-|---------------|---------------------------------------------|
-| OS            | Ubuntu 24.04 LTS                            |
-| Software      | - Node.js v18.20.8+ (`node -v`)<br>- Asterisk 22 with ARI enabled (`http.conf`, `ari.conf`)<br>- Node dependencies: `ari-client`, `ws`, `uuid`, `winston`, `chalk`, `dotenv` |
-| Network       | - Ports: 8088 (ARI), 12000+ (RTP)<br>- Access to `wss://api.openai.com/v1/realtime` |
-| Credentials   | - OpenAI API key (`OPENAI_API_KEY`)<br>- ARI credentials (`asterisk`/`asterisk`) |
+- Node.js (v14 or higher)
+- Asterisk PBX with ARI enabled
+- External AI model server with WebSocket support
+- Network connectivity between Asterisk and AI server
 
----
+## 🚀 Installation
 
-## Update!
-
-- Auto-install script, just run on your Ubuntun 24 instance: 
-  ```bash
-  curl -sL https://raw.githubusercontent.com/infinitocloud/asterisk_to_openai_rt_community/main/autoinstall_asterisk_to_openai.sh | sudo bash -s
-  ```
-
-## Installation
-1. Install prerequisites:
+1. **Clone the repository**
    ```bash
-   sudo apt update
-   sudo apt install nodejs npm asterisk
+   git clone <repository-url>
+   cd asterisk_to_external_ai
    ```
-2. Configure Asterisk:
-   - Enable HTTP
-     ```bash
-     sudo nano /etc/asterisk/http.conf
-     ```
-     Add the following lines at the end of the file:
-     ```ini
-     enabled=yes
-     bindaddr=127.0.0.1
-     bindport=8088
-     ```
-   - Configure ARI
-     ```bash
-     sudo nano /etc/asterisk/ari.conf
-     ```
-     Add the following lines at the end of the file:
-     ```ini
-     [asterisk]
-     type=user
-     password=asterisk
-     ```
-   - Add dialplan
-     ```bash
-     sudo nano /etc/asterisk/extensions.conf
-     ```
-     Add the following lines at the end of the file:
-     ```ini
-     [default]
-     exten => 9999,1,Answer()
-     same => n,Stasis(asterisk_to_openai_rt)
-     same => n,Hangup()
-     ```
-   - Configure SIP Extensions
-     ```bash
-     sudo nano /etc/asterisk/pjsip.conf
-     ```
-     Add the following lines at the end of the file to configure SIP extension 300 that can call 9999:
-     ```ini
-     [transport-udp]
-     type=transport
-     protocol=udp
-     bind=0.0.0.0
-     external_media_address=3.89.115.249  ; Required: Replace with your EC2 instance's public IP from AWS console
-     external_signaling_address=3.89.115.249  ; Required: Replace with your EC2 instance's public IP from AWS console
-     local_net=172.31.0.0/16  ; Optional: Adjust to your VPC CIDR if different
 
-     [300]
-     type=endpoint
-     context=default
-     disallow=all
-     allow=ulaw
-     auth=300
-     aors=300
-     direct_media=no
-     media_use_received_transport=yes
-     rtp_symmetric=yes
-     force_rport=yes
-     rewrite_contact=yes
-     dtmf_mode=auto
-
-     [300]
-     type=auth
-     auth_type=userpass
-     password=pass300
-     username=300
-
-     [300]
-     type=aor
-     max_contacts=2
-     ```
-   - Restart Asterisk:
-     ```bash
-     sudo systemctl restart asterisk
-     ```
-3. Clone the repository and install dependencies:
+2. **Install dependencies**
    ```bash
-   git clone https://github.com/Ravichathu225/Asterisk-to-Gemini-Live-API.git
-   cd Asterisk-to-Gemini-Live-API
    npm install
    ```
-4. Edit `config.conf` in the project root and add your `OPENAI_API_KEY` in the designated field:
-   ```plaintext
-   OPENAI_API_KEY=
-   ```
-5. Run the application:
+
+3. **Configure the application**
+   Edit `config.conf` with your settings:
    ```bash
-   node index.js
+   nano config.conf
    ```
 
----
+## ⚙️ Configuration
 
-## Usage
-1. Make a SIP call to the configured extension (e.g., `9999`).
-2. Interact with the assistant (e.g., say "Hi, What is your name?").
-3. Check console for transcriptions:
-   ```
-   O-0005 | 2025-06-28T04:15:01.924Z [INFO] [OpenAI] Assistant transcription: Hello! I'm Sofia...
-   O-0010 | 2025-06-28T04:15:08.045Z [INFO] [OpenAI] User command transcription: What is your name?
-   ```
-4. End the call or press `Ctrl+C` to stop.
+### Essential Settings
 
----
+**AI WebSocket Configuration**
+- `AI_WEBSOCKET_URL`: WebSocket endpoint of your AI server (e.g., `ws://localhost:8000/ws`)
+- `AI_AUTH_TOKEN`: Optional authentication token for your AI server
+- `AI_VOICE`: Voice model identifier (default: `default`)
+- `AI_LANGUAGE`: Language code (default: `en`)
 
-## Troubleshooting
-- Error: `OPENAI_API_KEY is missing`: Verify `OPENAI_API_KEY` in `config.conf`.
-- Error: `ARI connection error`: Check Asterisk (`sudo systemctl status asterisk`, port 8088). Run: sudo asterisk -rx "ari show status"
-- No transcriptions: Set `LOG_LEVEL=debug` in `config.conf`.
-- Debug commands:
-  - Asterisk logs: `tail -f /var/log/asterisk/messages`
-  - Node.js debug: `node --inspect index.js`
-- Wrong password on SIP registration: Ensure the SIP phone username is `300` and password is `pass300`. Verify the server IP matches your Asterisk instance.
-- No audio: Ensure `external_media_address` and `external_signaling_address` in `pjsip.conf` match your EC2 public IP. Verify RTP ports (12000+) are open in EC2 security group and local firewall. Update `asterisk.js` `external_host` to use the server’s IP.
+**Asterisk ARI Configuration**
+- `ARI_URL`: Asterisk REST Interface URL (default: `http://127.0.0.1:8088`)
+- `ARI_USERNAME`: ARI username (default: `asterisk`)
+- `ARI_PASSWORD`: ARI password (default: `asterisk`)
 
----
+**System Prompts**
+- `SYSTEM_PROMPT`: Instructions for the AI assistant
+- `INITIAL_MESSAGE`: First message to send when call starts
 
-## Contributing
-- Report issues with logs and steps to reproduce.
-- Submit pull requests via GitHub.
-- License: MIT (see `LICENSE`).
-   sudo apt update
-   sudo apt install nodejs npm asterisk
-   ```
-2. Configure Asterisk:
-   - Enable HTTP
-     ```bash
-     sudo nano /etc/asterisk/http.conf
-     ```
-     Add the following lines at the end of the file:
-     ```ini
-     enabled=yes
-     bindaddr=127.0.0.1
-     bindport=8088
-     ```
-   - Configure ARI
-     ```bash
-     sudo nano /etc/asterisk/ari.conf
-     ```
-     Add the following lines at the end of the file:
-     ```ini
-     [asterisk]
-     type=user
-     password=asterisk
-     ```
-   - Add dialplan
-     ```bash
-     sudo nano /etc/asterisk/extensions.conf
-     ```
-     Add the following lines at the end of the file:
-     ```ini
-     [default]
-     exten => 9999,1,Answer()
-     same => n,Stasis(asterisk_to_openai_rt)
-     same => n,Hangup()
-     ```
-   - Configure SIP Extensions
-     ```bash
-     sudo nano /etc/asterisk/pjsip.conf
-     ```
-     Add the following lines at the end of the file to configure SIP extension 300 that can call 9999:
-     ```ini
-     [transport-udp]
-     type=transport
-     protocol=udp
-     bind=0.0.0.0
-     external_media_address=3.89.115.249  ; Required: Replace with your EC2 instance's public IP from AWS console
-     external_signaling_address=3.89.115.249  ; Required: Replace with your EC2 instance's public IP from AWS console
-     local_net=172.31.0.0/16  ; Optional: Adjust to your VPC CIDR if different
+### Advanced Settings
 
-     [300]
-     type=endpoint
-     context=default
-     disallow=all
-     allow=ulaw
-     auth=300
-     aors=300
-     direct_media=no
-     media_use_received_transport=yes
-     rtp_symmetric=yes
-     force_rport=yes
-     rewrite_contact=yes
-     dtmf_mode=auto
+**Voice Activity Detection**
+- `VAD_ENABLED`: Enable/disable VAD (default: `true`)
+- `VAD_THRESHOLD`: Sensitivity threshold 0.0-1.0 (default: `0.6`)
+- `VAD_SILENCE_DURATION_MS`: Silence duration before speech end (default: `600`)
+- `VAD_PREFIX_PADDING_MS`: Audio padding before speech (default: `200`)
 
-     [300]
-     type=auth
-     auth_type=userpass
-     password=pass300
-     username=300
+**Call Management**
+- `MAX_CONCURRENT_CALLS`: Maximum simultaneous calls (default: `10`)
+- `CALL_DURATION_LIMIT_SECONDS`: Max call duration, 0=unlimited (default: `300`)
 
-     [300]
-     type=aor
-     max_contacts=2
-     ```
-   - Restart Asterisk:
-     ```bash
-     sudo systemctl restart asterisk
-     ```
-3. Clone the repository and install dependencies:
+**Audio Settings**
+- `SILENCE_PADDING_MS`: Initial silence padding (default: `100`)
+- `LOG_LEVEL`: Logging verbosity: `error`, `warn`, `info`, `debug` (default: `info`)
+
+## 🔌 AI Server Protocol
+
+Your external AI server must implement a WebSocket protocol. Below is the expected message format:
+
+### Messages TO AI Server (from Asterisk)
+
+**Session Initialization**
+```json
+{
+  "type": "session.init",
+  "config": {
+    "audio_format": "g711_ulaw",
+    "sample_rate": 8000,
+    "channels": 1,
+    "language": "en",
+    "voice": "default",
+    "system_prompt": "Your AI instructions...",
+    "vad_enabled": true,
+    "vad_threshold": 0.6,
+    "vad_silence_duration_ms": 600
+  }
+}
+```
+
+**Audio Input**
+```json
+{
+  "type": "audio.input",
+  "audio": "base64_encoded_mulaw_audio_data",
+  "format": "g711_ulaw"
+}
+```
+
+**Text Input** (optional)
+```json
+{
+  "type": "text.input",
+  "text": "Hello, how can I help?"
+}
+```
+
+### Messages FROM AI Server (to Asterisk)
+
+**Session Ready**
+```json
+{
+  "type": "session_started"
+}
+```
+or
+```json
+{
+  "type": "ready"
+}
+```
+
+**Audio Output** (AI speech)
+```json
+{
+  "type": "audio_delta",
+  "audio": "base64_encoded_mulaw_audio_data"
+}
+```
+or
+```json
+{
+  "type": "audio_chunk",
+  "data": "base64_encoded_mulaw_audio_data"
+}
+```
+
+**Transcription**
+```json
+{
+  "type": "transcript",
+  "text": "User said something...",
+  "role": "user"
+}
+```
+or
+```json
+{
+  "type": "transcription",
+  "text": "AI response...",
+  "speaker": "assistant"
+}
+```
+
+**User Speech Detection**
+```json
+{
+  "type": "user_speech_started"
+}
+```
+or
+```json
+{
+  "type": "speech_started"
+}
+```
+
+**Response Complete**
+```json
+{
+  "type": "response_complete"
+}
+```
+or
+```json
+{
+  "type": "audio_done"
+}
+```
+
+**Error Handling**
+```json
+{
+  "type": "error",
+  "message": "Error description",
+  "fatal": false
+}
+```
+
+## 🏃 Running the Application
+
+1. **Start your external AI server** (ensure it's running and accessible)
+
+2. **Start the Asterisk connector**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/asterisk_to_gemini_rt_community.git
-   cd asterisk_to_gemini_rt_community
-   npm install
+   npm start
    ```
-4. Edit `config.conf` in the project root and add your `GEMINI_API_KEY` in the designated field:
-   ```plaintext
-   GEMINI_API_KEY=your_api_key_here
-   ```
-   
-   To get your Gemini API key:
-   - Visit https://aistudio.google.com/app/apikey
-   - Sign in with your Google account
-   - Click "Create API key"
-   - Copy the generated key
 
-5. Run the application:
+3. **Make a test call** to your Asterisk extension configured for this application
+
+## 📞 Asterisk Configuration
+
+### extensions.conf
+
+```ini
+[your-context]
+exten => 1000,1,NoOp(External AI Call)
+    same => n,Stasis(asterisk_to_external_ai)
+    same => n,Hangup()
+```
+
+### ari.conf
+
+```ini
+[general]
+enabled = yes
+pretty = yes
+
+[asterisk]
+type = user
+read_only = no
+password = asterisk
+```
+
+## 🧪 Testing
+
+1. **Check logs for connection**
    ```bash
-   node index.js
+   npm start
+   ```
+   Look for: `External AI WebSocket connected for [channelId]`
+
+2. **Make a test call** and verify:
+   - Audio is being sent to AI server
+   - AI responses are played back
+   - Transcriptions appear in logs
+
+3. **Monitor RTP streams**
+   ```bash
+   # Check if RTP ports are active
+   netstat -an | grep 12000
    ```
 
----
+## 🔧 Customizing the AI Integration
 
-## Usage
-1. Make a SIP call to the configured extension (e.g., `9999`).
-2. Interact with the assistant (e.g., say "Hi, What is your name?").
-3. Check console for transcriptions:
-   ```
-   O-0005 | 2025-06-28T04:15:01.924Z [INFO] [OpenAI] Assistant transcription: Hello! I'm Sofia...
-   O-0010 | 2025-06-28T04:15:08.045Z [INFO] [OpenAI] User command transcription: What is your name?
-   ```
-4. End the call or press `Ctrl+C` to stop.
+The `external-ai.js` module contains the WebSocket protocol implementation. Modify the `processMessage()` function to match your AI server's message format:
 
----
+```javascript
+const processMessage = async (message) => {
+  let response = JSON.parse(message);
+  
+  switch (response.type) {
+    case 'your_custom_audio_type':
+      // Handle your audio format
+      break;
+    case 'your_custom_transcript_type':
+      // Handle your transcription format
+      break;
+    // Add more custom handlers
+  }
+};
+```
 
-## Configuration Options
+## 📊 Architecture
 
-The `config.conf` file supports the following Gemini-specific options:
+```
+┌─────────────┐      ARI/WebSocket     ┌──────────────┐
+│  Asterisk   │◄─────────────────────►│    Node.js   │
+│     PBX     │                        │  Application │
+└─────────────┘                        └──────┬───────┘
+      ▲                                       │
+      │ RTP Audio (G.711 μ-law)              │
+      │                                       │
+      ▼                                       │
+┌─────────────┐                              │
+│   RTP       │                              │
+│  Handler    │                              │
+└─────────────┘                              │
+                                             │ WebSocket
+                                             │
+                                             ▼
+                                    ┌────────────────┐
+                                    │  External AI   │
+                                    │     Server     │
+                                    └────────────────┘
+```
 
-- `GEMINI_API_KEY`: Your Google Gemini API key (required)
-- `GEMINI_MODEL`: Gemini model to use (default: `models/gemini-2.0-flash-exp`)
-- `GEMINI_VOICE`: Voice for audio responses (default: `Puck`)
-  - Available voices: Puck, Charon, Kore, Fenrir, Aoede
-- `START_SENSITIVITY`: Speech detection sensitivity (default: `START_SENSITIVITY_HIGH`)
-  - Options: `START_SENSITIVITY_HIGH`, `START_SENSITIVITY_LOW`
-- `END_SENSITIVITY`: End of speech detection (default: `END_SENSITIVITY_HIGH`)
-  - Options: `END_SENSITIVITY_HIGH`, `END_SENSITIVITY_LOW`
-- `VAD_PREFIX_PADDING_MS`: Prefix padding in milliseconds (default: 200)
-- `VAD_SILENCE_DURATION_MS`: Silence duration before end of speech (default: 600)
+## 🐛 Troubleshooting
 
----
+### WebSocket Connection Issues
+- Verify `AI_WEBSOCKET_URL` is correct and accessible
+- Check if AI server is running and accepting connections
+- Review firewall rules between Node.js and AI server
+- Check authentication token if required
 
-## Troubleshooting
-- Error: `GEMINI_API_KEY is missing`: Verify `GEMINI_API_KEY` in `config.conf`.
-- Error: `ARI connection error`: Check Asterisk (`sudo systemctl status asterisk`, port 8088). Run: sudo asterisk -rx "ari show status"
-- No transcriptions: Set `LOG_LEVEL=debug` in `config.conf`.
-- Debug commands:
-  - Asterisk logs: `tail -f /var/log/asterisk/messages`
-  - Node.js debug: `node --inspect index.js`
-- Wrong password on SIP registration: Ensure the SIP phone username is `300` and password is `pass300`. Verify the server IP matches your Asterisk instance.
-- No audio: Ensure `external_media_address` and `external_signaling_address` in `pjsip.conf` match your EC2 public IP. Verify RTP ports (12000+) are open in EC2 security group and local firewall. Update `asterisk.js` `external_host` to use the server's IP.
-- WebSocket connection issues: Verify you have access to `generativelanguage.googleapis.com`. Check your API key is valid at https://aistudio.google.com/app/apikey
+### Audio Quality Issues
+- Verify G.711 μ-law codec support on AI server
+- Check RTP packet timing and buffering
+- Adjust `SILENCE_PADDING_MS` if needed
+- Review `VAD_THRESHOLD` settings
 
----
+### Call Not Connecting
+- Verify Asterisk ARI is enabled and accessible
+- Check `ARI_USERNAME` and `ARI_PASSWORD` credentials
+- Ensure Asterisk dialplan routes to correct Stasis application
+- Review Asterisk logs: `asterisk -rvvv`
 
-## Audio Format Notes
+### High Latency
+- Check network latency between all components
+- Reduce `VAD_SILENCE_DURATION_MS` for faster response
+- Optimize AI model inference time
+- Ensure RTP ports are not blocked
 
-Gemini Live API uses PCM audio format:
-- Sample rate: 8kHz (μ-law encoded)
-- Audio is sent via `realtimeInput` messages
-- Responses come in `serverContent` with inline audio data
-- The application handles conversion between Asterisk's RTP format and Gemini's expected format
+## 📝 Logging
 
----
+The application uses color-coded logging:
 
-## Contributing
-- Report issues with logs and steps to reproduce.
-- Submit pull requests via GitHub.
-- License: MIT (see `LICENSE`).
+- **Cyan** `[Client]`: Messages sent to AI
+- **Yellow** `[AI]`: Messages received from AI
+- **Gray**: General application logs
 
----
+Log levels: `error`, `warn`, `info`, `debug`
 
-## Differences from OpenAI Version
+Set in `config.conf`:
+```
+LOG_LEVEL=debug  # For detailed debugging
+LOG_LEVEL=info   # For normal operation
+```
 
-This version replaces OpenAI Realtime API with Google Gemini Live API:
-- Uses Gemini's WebSocket endpoint and message format
-- Supports Gemini's voice models (Puck, Charon, Kore, Fenrir, Aoede)
-- Adapted audio handling for Gemini's PCM format
-- Updated configuration for Gemini-specific parameters
-- All core functionality (RTP streaming, transcription, call management) remains the same
+## 🤝 Contributing
+
+Contributions are welcome! Areas for improvement:
+
+- Additional audio codec support
+- Protocol adapters for popular AI APIs
+- Enhanced error recovery
+- Performance optimizations
+- Documentation improvements
+
+## 📄 License
+
+[Specify your license here]
+
+## 🆘 Support
+
+For issues and questions:
+1. Check the troubleshooting section
+2. Review application logs with `LOG_LEVEL=debug`
+3. Verify AI server protocol implementation
+4. Check Asterisk configuration and logs
+
+## 🔄 Migration from OpenAI
+
+This project replaces the OpenAI Realtime API with a generic WebSocket interface. Key changes:
+
+1. **Configuration**: Replace `OPENAI_API_KEY` with `AI_WEBSOCKET_URL`
+2. **Protocol**: Implement WebSocket server matching the protocol spec
+3. **Audio Format**: Ensure G.711 μ-law codec support
+4. **VAD**: Configure Voice Activity Detection for your AI model
+
+## 📚 Additional Resources
+
+- [Asterisk ARI Documentation](https://wiki.asterisk.org/wiki/display/AST/Asterisk+REST+Interface)
+- [WebSocket Protocol RFC](https://tools.ietf.org/html/rfc6455)
+- [G.711 Codec Specification](https://www.itu.int/rec/T-REC-G.711)

@@ -1,10 +1,10 @@
 {
-  "name": "asterisk_to_gemini_rt_community",
+  "name": "asterisk_to_external_ai",
   "version": "1.0.0",
-  "description": "Asterisk to Gemini Live API integration for voice-based virtual assistant",
-  "main": "src/index.js",
+  "description": "Connect Asterisk to external AI models via WebSocket",
+  "main": "index.js",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node index.js"
   },
   "dependencies": {
     "ari-client": "^2.2.0",

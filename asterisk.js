@@ -3,7 +3,7 @@ const WebSocket = require('ws');
 const { config, logger } = require('./config');
 const { sipMap, extMap, rtpSenders, rtpReceivers, cleanupPromises } = require('./state');
 const { startRTPReceiver, getNextRtpPort, releaseRtpPort } = require('./rtp');
-const { startGeminiWebSocket } = require('./gemini');
+const { startExternalAIWebSocket } = require('./external-ai');
 
 let ariClient;
 
@@ -203,7 +203,7 @@ async function initializeAriClient() {
           sipMap.set(channel.id, channelData);
         }
 
-        await startGeminiWebSocket(channel.id);
+        await startExternalAIWebSocket(channel.id);
       } catch (e) {
         logger.error(`Error in SIP channel ${channel.id}: ${e.message}`);
         await cleanupChannel(channel.id);

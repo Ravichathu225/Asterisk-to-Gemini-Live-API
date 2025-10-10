@@ -8,17 +8,24 @@ const config = {
   ARI_USER: process.env.ARI_USERNAME,
   ARI_PASS: process.env.ARI_PASSWORD,
   ARI_APP: 'asterisk_to_openai_rt',
-  GEMINI_API_KEY: process.env.GEMINI_API_KEY,
-  GEMINI_REALTIME_URL: 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent',
-  GEMINI_MODEL: process.env.GEMINI_MODEL || 'models/gemini-2.0-flash-exp',
-  GEMINI_VOICE: process.env.GEMINI_VOICE || 'Puck',
-  START_SENSITIVITY: process.env.START_SENSITIVITY || 'START_SENSITIVITY_HIGH',
-  END_SENSITIVITY: process.env.END_SENSITIVITY || 'END_SENSITIVITY_HIGH',
+  
+  // External AI WebSocket Configuration
+  AI_WEBSOCKET_URL: process.env.AI_WEBSOCKET_URL,
+  AI_AUTH_TOKEN: process.env.AI_AUTH_TOKEN,
+  AI_VOICE: process.env.AI_VOICE || 'default',
+  AI_LANGUAGE: process.env.AI_LANGUAGE || 'en',
+  
+  // RTP Configuration
   RTP_PORT_START: 12000,
   MAX_CONCURRENT_CALLS: parseInt(process.env.MAX_CONCURRENT_CALLS) || 10,
+  
+  // Voice Activity Detection (VAD) Configuration
+  VAD_ENABLED: process.env.VAD_ENABLED !== 'false',
   VAD_THRESHOLD: parseFloat(process.env.VAD_THRESHOLD) || 0.6,
   VAD_PREFIX_PADDING_MS: Number(process.env.VAD_PREFIX_PADDING_MS) || 200,
   VAD_SILENCE_DURATION_MS: Number(process.env.VAD_SILENCE_DURATION_MS) || 600,
+  
+  // General Configuration
   LOG_LEVEL: process.env.LOG_LEVEL || 'info',
   SYSTEM_PROMPT: process.env.SYSTEM_PROMPT,
   INITIAL_MESSAGE: process.env.INITIAL_MESSAGE || 'Hi',
@@ -31,7 +38,8 @@ console.log('Loaded configuration:', {
   ARI_URL: config.ARI_URL,
   ARI_USER: config.ARI_USER,
   ARI_PASS: config.ARI_PASS ? 'set' : 'unset',
-  GEMINI_API_KEY: config.GEMINI_API_KEY ? 'set' : 'unset',
+  AI_WEBSOCKET_URL: config.AI_WEBSOCKET_URL,
+  AI_AUTH_TOKEN: config.AI_AUTH_TOKEN ? 'set' : 'unset',
   LOG_LEVEL: config.LOG_LEVEL,
   SYSTEM_PROMPT: config.SYSTEM_PROMPT ? 'set' : 'unset'
 });
@@ -50,8 +58,8 @@ const logger = winston.createLogger({
         counter = `C-${sentEventCounter.toString().padStart(4, '0')}`;
         sentEventCounter++;
         coloredMessage = chalk.cyanBright(message);
-      } else if (origin === '[GeminiAI]') {
-        counter = `G-${receivedEventCounter.toString().padStart(4, '0')}`;
+      } else if (origin === '[AI]') {
+        counter = `A-${receivedEventCounter.toString().padStart(4, '0')}`;
         receivedEventCounter++;
         coloredMessage = chalk.yellowBright(message);
       } else {
@@ -80,11 +88,11 @@ if (config.CALL_DURATION_LIMIT_SECONDS < 0) {
 logger.info(`CALL_DURATION_LIMIT_SECONDS set to ${config.CALL_DURATION_LIMIT_SECONDS} seconds`);
 
 const logClient = (msg, level = 'info') => logger[level](`[Client] ${msg}`);
-const logGeminiAI = (msg, level = 'info') => logger[level](`[GeminiAI] ${msg}`);
+const logAI = (msg, level = 'info') => logger[level](`[AI] ${msg}`);
 
 module.exports = {
   config,
   logger,
   logClient,
-  logGeminiAI
+  logAI
 };

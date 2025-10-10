@@ -2,7 +2,6 @@ const dgram = require('dgram');
 const { EventEmitter } = require('events');
 const { config, logger } = require('./config');
 const { sipMap, rtpSenders, rtpReceivers } = require('./state');
-const { ulawToPcm16k } = require('./audio');
 
 logger.info('Loading rtp.js module');
 
@@ -41,20 +40,12 @@ function startRTPReceiver(channelId, port) {
     }
     if (channelData && channelData.ws && channelData.ws.readyState === 1) {
       const muLawData = msg.slice(12);
-      logger.debug(`Received user audio for ${channelId}: ${muLawData.length} bytes μ-law`);
-      // Convert μ-law (8kHz) to PCM 16kHz for Gemini
-      const pcm16kData = ulawToPcm16k(muLawData);
-      logger.debug(`Converted user audio to PCM16k for ${channelId}: ${pcm16kData.length} bytes`);
-      // Send audio as realtimeInput for Gemini Live API
+      // Send audio to external AI server
       channelData.ws.send(JSON.stringify({ 
-        realtimeInput: {
-          audio: {
-            data: pcm16kData.toString('base64'),
-            mimeType: 'audio/pcm;rate=16000'
-          }
-        }
+        type: 'audio.input', 
+        audio: muLawData.toString('base64'),
+        format: 'g711_ulaw'
       }));
-      logger.debug(`Sent user audio to Gemini for ${channelId}`);
     }
   });
   rtpReceiver.on('error', (err) => logger.error(`RTP Receiver error for ${channelId}: ${err.message}`));
