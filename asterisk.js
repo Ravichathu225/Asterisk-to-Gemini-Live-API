@@ -133,6 +133,21 @@ async function cleanupChannel(channelId) {
   await cleanupPromise;
 }
 
+async function getChannelVariable(channel, variable) {
+  try {
+    const result = await channel.getChannelVar({ variable });
+    return result.value || 'unknown';
+  } catch (e) {
+    if (e.message.includes('Provided variable was not found')) {
+      logger.debug(`Channel variable ${variable} not found for ${channel.id}, using fallback`);
+      return 'unknown';
+    } else {
+      logger.warn(`Error fetching channel variable ${variable} for ${channel.id}: ${e.message}`);
+      return 'unknown';
+    }
+  }
+}
+
 async function initializeAriClient() {
   try {
     ariClient = await ari.connect(config.ARI_URL, config.ARI_USER, config.ARI_PASS);
@@ -172,6 +187,26 @@ async function initializeAriClient() {
         await channel.answer();
         logger.info(`Channel ${channel.id} answered, bridge ${bridgeId} created for SIP audio`);
 
+        // Extract from and to numbers
+        const fromNumber = channel.caller ? channel.caller.number || 'unknown' : 'unknown';
+        
+        // Prioritize To header for inbound DID (Twilio/PJSIP)
+        const toHeaderVar = await getChannelVariable(channel, 'PJSIP_HEADER(read,To)');
+        let toNumber;
+        if (toHeaderVar !== 'unknown') {
+          // Parse the SIP URI to extract the user part (DID/to number)
+          const match = toHeaderVar.match(/sip:([^@;]+)/i);
+          toNumber = match ? match[1] : 'unknown';
+          logger.debug(`Parsed To header for ${channel.id}: ${toHeaderVar} -> ${toNumber}`);
+        } else {
+          // Fallback to DID or EXTEN
+          const didNumber = await getChannelVariable(channel, 'DID');
+          const extenNumber = await getChannelVariable(channel, 'EXTEN');
+          toNumber = didNumber !== 'unknown' ? didNumber : extenNumber;
+        }
+        
+        logger.info(`Call details for ${channel.id}: From ${fromNumber} to ${toNumber}`);
+
         const port = getNextRtpPort();
         await startRTPReceiver(channel.id, port);
         const extParams = {
@@ -183,7 +218,7 @@ async function initializeAriClient() {
           connection_type: 'client',
           direction: 'both'
         };
-        sipMap.set(channel.id, { bridgeId, channelId: channel.id, bridge, channel, rtpPort: port, wsClosed: false });
+        sipMap.set(channel.id, { bridgeId, channelId: channel.id, bridge, channel, rtpPort: port, wsClosed: false, fromNumber, toNumber });
         const extChannel = await ariClient.channels.externalMedia(extParams);
         logger.info(`ExternalMedia channel ${extChannel.id} created with codec ulaw, RTP to 127.0.0.1:${port}`);
         extMap.set(extChannel.id, { bridgeId, channelId: channel.id });

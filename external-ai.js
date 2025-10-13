@@ -217,6 +217,12 @@ async function startExternalAIWebSocket(channelId) {
       ws.on('open', async () => {
         logClient(`External AI WebSocket connected for ${channelId}`);
         
+        // Fetch updated channel data
+        channelData = sipMap.get(channelId);
+        const fromNumber = channelData.fromNumber || 'unknown';
+        const toNumber = channelData.toNumber || 'unknown';
+        logger.info(`Sending call context for ${channelId}: From ${fromNumber} to ${toNumber}`);
+
         // Send initial session configuration to AI server
         // Customize this based on your AI server's protocol
         const sessionConfig = {
@@ -228,6 +234,11 @@ async function startExternalAIWebSocket(channelId) {
             language: config.AI_LANGUAGE || 'en',
             voice: config.AI_VOICE || 'default',
             system_prompt: config.SYSTEM_PROMPT,
+            // Add call context here
+            call_context: {
+              from_number: fromNumber,
+              to_number: toNumber
+            },
             // Voice Activity Detection settings
             vad_enabled: config.VAD_ENABLED !== false,
             vad_threshold: config.VAD_THRESHOLD || 0.6,
@@ -327,13 +338,20 @@ function sendAudioToAI(channelId, audioBuffer) {
     return false;
   }
 
+  const fromNumber = channelData.fromNumber || 'unknown';
+  const toNumber = channelData.toNumber || 'unknown';
+
   try {
     // Send audio to AI server
     // Customize the message format based on your AI server's protocol
     channelData.ws.send(JSON.stringify({
       type: 'audio.input',
       audio: audioBuffer.toString('base64'),
-      format: 'g711_ulaw'
+      format: 'g711_ulaw',
+      call_context: {
+        from_number: fromNumber,
+        to_number: toNumber
+      }
     }));
     return true;
   } catch (e) {
