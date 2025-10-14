@@ -30,7 +30,18 @@ const config = {
   SYSTEM_PROMPT: process.env.SYSTEM_PROMPT,
   INITIAL_MESSAGE: process.env.INITIAL_MESSAGE || 'Hi',
   SILENCE_PADDING_MS: parseInt(process.env.SILENCE_PADDING_MS) || 100,
-  CALL_DURATION_LIMIT_SECONDS: parseInt(process.env.CALL_DURATION_LIMIT_SECONDS) || 0 // 0 means no limit
+  CALL_DURATION_LIMIT_SECONDS: parseInt(process.env.CALL_DURATION_LIMIT_SECONDS) || 0, // 0 means no limit
+
+  //Tinybird database configuration
+  DATASOURCE_NAME: process.env.DATASOURCE_NAME || 'otrix_ai_call_logs',
+  TINYBIRD_HOST: process.env.TINYBIRD_HOST || 'https://api.tinybird.co',
+  TINYBIRD_API_TOKEN: process.env.TINYBIRD_API_TOKEN || 'your_tinybird_api_token_here',
+
+  //Bubble database configuration
+  BUBBLE_API_TOKEN: process.env.BUBBLE_API_TOKEN || 'your_bubble_api_token_here',
+  BUBBLE_API_ENDPOINT_URL: process.env.BUBBLE_API_ENDPOINT_URL || 'https://otrix.co/api/1.1/wf',
+  BUBBLE_VERSION_TEST_ENDPOINT_URL: process.env.BUBBLE_VERSION_TEST_ENDPOINT_URL || 'https://otrix.co/version-test/api/1.1/wf',
+  BUBBLE_API_DATABASE_URL: process.env.BUBBLE_API_DATABASE_URL || 'https://otrix.co/version-test/api/1.1/obj'
 };
 
 // Debug logging of loaded configuration
@@ -41,7 +52,9 @@ console.log('Loaded configuration:', {
   AI_WEBSOCKET_URL: config.AI_WEBSOCKET_URL,
   AI_AUTH_TOKEN: config.AI_AUTH_TOKEN ? 'set' : 'unset',
   LOG_LEVEL: config.LOG_LEVEL,
-  SYSTEM_PROMPT: config.SYSTEM_PROMPT ? 'set' : 'unset'
+  SYSTEM_PROMPT: config.SYSTEM_PROMPT ? 'set' : 'unset',
+  TINYBIRD_API_TOKEN: config.TINYBIRD_API_TOKEN ? 'set' : 'unset',
+  BUBBLE_API_TOKEN: config.BUBBLE_API_TOKEN ? 'set' : 'unset'
 });
 
 // Logger configuration

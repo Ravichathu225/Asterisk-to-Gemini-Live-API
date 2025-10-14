@@ -3,6 +3,7 @@ const { v4: uuid } = require('uuid');
 const { config, logger, logClient, logAI } = require('./config');
 const { sipMap, cleanupPromises } = require('./state');
 const { streamAudio, rtpEvents } = require('./rtp');
+const { AgentSetting } = require('./agent-setting');
 
 logger.info('Loading external-ai.js module');
 
@@ -208,7 +209,14 @@ async function startExternalAIWebSocket(channelId) {
       const wsOptions = {};
       if (config.AI_AUTH_TOKEN) {
         wsOptions.headers = {
-          'Authorization': `Bearer ${config.AI_AUTH_TOKEN}`
+          'Authorization': `Bearer ${config.AI_AUTH_TOKEN}`,
+          'ngrok-skip-browser-warning': 'true',
+          'User-Agent': 'Asterisk-AI-Client'
+        };
+      } else {
+        wsOptions.headers = {
+          'ngrok-skip-browser-warning': 'true',
+          'User-Agent': 'Asterisk-AI-Client'
         };
       }
 
@@ -223,6 +231,21 @@ async function startExternalAIWebSocket(channelId) {
         const toNumber = channelData.toNumber || 'unknown';
         logger.info(`Sending call context for ${channelId}: From ${fromNumber} to ${toNumber}`);
 
+        // Fetch agent settings based on toNumber
+        const getAgentSettings = new AgentSetting(toNumber);
+        await getAgentSettings._fetchAgentSettings();
+
+        // Attach agent settings to channel data
+        const agent_prompt = getAgentSettings.prompt;
+        const agent_voice = getAgentSettings.voice;
+        const agent_temperature = getAgentSettings.temperature;
+        const agent_maxTokens = getAgentSettings.maxTokens;
+        const agent_name = getAgentSettings.name;
+        const agent_userId = getAgentSettings.userId;
+        const agent_orgUid = getAgentSettings.orgUid;
+        const agent_accountBalance = getAgentSettings.accountBalance;
+        const agent_generateResponseModel = getAgentSettings.generateResponseModel;
+        const agent_costOfCall = getAgentSettings.costOfCall;
         // Send initial session configuration to AI server
         // Customize this based on your AI server's protocol
         const sessionConfig = {
@@ -231,18 +254,22 @@ async function startExternalAIWebSocket(channelId) {
             audio_format: 'g711_ulaw',  // Or 'pcm16' depending on your AI
             sample_rate: 8000,
             channels: 1,
-            language: config.AI_LANGUAGE || 'en',
-            voice: config.AI_VOICE || 'default',
-            system_prompt: config.SYSTEM_PROMPT,
+            voice: agent_voice,
+            system_prompt: agent_prompt,
+            temperature: agent_temperature,
+            max_tokens: agent_maxTokens,
+            user_id: agent_userId,
+            agent_name: agent_name,
+            org_uid: agent_orgUid,
+            account_balance: agent_accountBalance,
+            response_model: agent_generateResponseModel,
+            cost_of_call_per_minute: agent_costOfCall || 0.27,
+            session_id: uuid(),
             // Add call context here
             call_context: {
               from_number: fromNumber,
               to_number: toNumber
             },
-            // Voice Activity Detection settings
-            vad_enabled: config.VAD_ENABLED !== false,
-            vad_threshold: config.VAD_THRESHOLD || 0.6,
-            vad_silence_duration_ms: config.VAD_SILENCE_DURATION_MS || 600
           }
         };
 
