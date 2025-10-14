@@ -243,6 +243,7 @@ async function startExternalAIWebSocket(channelId) {
         const agent_name = getAgentSettings.name;
         const agent_userId = getAgentSettings.userId;
         const agent_orgUid = getAgentSettings.orgUid;
+        const agent_id = getAgentSettings.agentId;
         const agent_accountBalance = getAgentSettings.accountBalance;
         const agent_generateResponseModel = getAgentSettings.generateResponseModel;
         const agent_costOfCall = getAgentSettings.costOfCall;
@@ -261,6 +262,7 @@ async function startExternalAIWebSocket(channelId) {
             user_id: agent_userId,
             agent_name: agent_name,
             org_uid: agent_orgUid,
+            agent_id: agent_id,
             account_balance: agent_accountBalance,
             response_model: agent_generateResponseModel,
             cost_of_call_per_minute: agent_costOfCall || 0.27,
