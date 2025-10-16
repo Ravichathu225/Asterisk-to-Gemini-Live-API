@@ -32,9 +32,10 @@ This project enables real-time voice conversations between Asterisk PBX and exte
    ```
 
 3. **Configure the application**
-   Edit `config.conf` with your settings:
+   Copy the example environment file and edit with your settings:
    ```bash
-   nano config.conf
+   cp .env.example .env
+   nano .env
    ```
 
 ## ⚙️ Configuration
@@ -329,7 +330,7 @@ The application uses color-coded logging:
 
 Log levels: `error`, `warn`, `info`, `debug`
 
-Set in `config.conf`:
+Set in `.env`:
 ```
 LOG_LEVEL=debug  # For detailed debugging
 LOG_LEVEL=info   # For normal operation

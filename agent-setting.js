@@ -104,7 +104,7 @@ class AgentSetting {
         this.otrixMainPrompt = agentData.otrix_main_prompt || null;
         this.costOfCall = agentData.cost_of_call ?? 0.27;
 
-        console.info(`✅ Successfully fetched and mapped prompt data for phone number: ${this.phoneNumber}`);
+        console.info(`✅ Successfully fetched and mapped prompt data for phone number: ${this.phoneNumber} and org_uid: ${orgUid}`);
 
     } catch (error) {
       if (error.response) {

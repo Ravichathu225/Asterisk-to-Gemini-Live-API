@@ -4,15 +4,18 @@
   "description": "Connect Asterisk to external AI models via WebSocket",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "setup-api": "node freepbx-setup.js"
   },
   "dependencies": {
     "ari-client": "^2.2.0",
+    "asterisk-ami-client": "^1.1.5",
     "async": "^3.2.4",
     "axios": "^1.12.2",
     "chalk": "^4.1.2",
     "dgram": "^1.0.1",
     "dotenv": "^16.6.0",
+    "express": "^4.18.2",
     "node-udp": "^1.0.5",
     "uuid": "^9.0.0",
     "winston": "^3.8.2",

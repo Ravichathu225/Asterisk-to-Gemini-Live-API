@@ -235,6 +235,25 @@ async function startExternalAIWebSocket(channelId) {
         const getAgentSettings = new AgentSetting(toNumber);
         await getAgentSettings._fetchAgentSettings();
 
+        // Check account balance before proceeding
+        const agent_accountBalance = getAgentSettings.accountBalance;
+        if (agent_accountBalance <= 0) {
+          logger.warn(`Insufficient account balance (${agent_accountBalance}) for ${channelId}. Disconnecting call.`);
+          ws.close();
+          
+          // Hangup the call
+          try {
+            const ariClient = require('./asterisk').ariClient;
+            await ariClient.channels.hangup({ channelId: channelId });
+            logger.info(`Call ${channelId} hung up due to insufficient balance`);
+          } catch (e) {
+            logger.error(`Error hanging up call ${channelId}: ${e.message}`);
+          }
+          return;
+        }
+        
+        logger.info(`Account balance check passed for ${channelId}: Balance = ${agent_accountBalance}`);
+
         // Attach agent settings to channel data
         const agent_prompt = getAgentSettings.prompt;
         const agent_voice = getAgentSettings.voice;
@@ -244,7 +263,6 @@ async function startExternalAIWebSocket(channelId) {
         const agent_userId = getAgentSettings.userId;
         const agent_orgUid = getAgentSettings.orgUid;
         const agent_id = getAgentSettings.agentId;
-        const agent_accountBalance = getAgentSettings.accountBalance;
         const agent_generateResponseModel = getAgentSettings.generateResponseModel;
         const agent_costOfCall = getAgentSettings.costOfCall;
         // Send initial session configuration to AI server

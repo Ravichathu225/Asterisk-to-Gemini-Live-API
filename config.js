@@ -1,4 +1,4 @@
-require('dotenv').config({ path: './config.conf' });
+require('dotenv').config();
 const winston = require('winston');
 const chalk = require('chalk');
 
@@ -89,13 +89,13 @@ const logger = winston.createLogger({
 
 // Validate critical configurations
 if (!config.SYSTEM_PROMPT || config.SYSTEM_PROMPT.trim() === '') {
-  logger.error('SYSTEM_PROMPT is missing or empty in config.conf');
+  logger.error('SYSTEM_PROMPT is missing or empty in .env');
   process.exit(1);
 }
-logger.info('SYSTEM_PROMPT loaded from config.conf');
+logger.info('SYSTEM_PROMPT loaded from .env');
 
 if (config.CALL_DURATION_LIMIT_SECONDS < 0) {
-  logger.error('CALL_DURATION_LIMIT_SECONDS cannot be negative in config.conf');
+  logger.error('CALL_DURATION_LIMIT_SECONDS cannot be negative in .env');
   process.exit(1);
 }
 logger.info(`CALL_DURATION_LIMIT_SECONDS set to ${config.CALL_DURATION_LIMIT_SECONDS} seconds`);
